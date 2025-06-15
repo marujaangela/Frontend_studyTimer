@@ -1,141 +1,183 @@
 // cSpell:ignore todos
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-// Interface für Todo-Items
+/**
+ * Repräsentiert ein einzelnes Todo-Objekt
+ */
 interface Todo {
-  id: number
-  text: string
+  id?: number
+  taskDescription: string
   completed: boolean
   completedAt?: Date
   editing?: boolean
 }
 
-// Definition der Events, die diese Komponente emittieren kann
 const emit = defineEmits<{
   (e: 'archive-completed', todos: Array<{ text: string, completedAt: Date }>): void
 }>()
 
-// Reaktive Zustandsvariablen
-const todos = ref<Todo[]>([])          // Liste aller Todos
-const newTodo = ref('')                // Text für neues Todo
-const showOpen = ref(true)             // Zeigt offene Todos an/aus
-const showCompleted = ref(true)        // Zeigt erledigte Todos an/aus
-const editText = ref('')               // Text während der Bearbeitung
-const draggedTodo = ref<Todo | null>(null) // Aktuell gezogenes Todo
+const todos = ref<Todo[]>([])
+const newTodo = ref('')
+const editText = ref('')
+const showOpen = ref(true)
+const showCompleted = ref(true)
+const draggedTodo = ref<Todo | null>(null)
 
-/*
- * Funktionen für Todo-Management
+/**
+ * Lädt alle Todos vom Backend und speichert sie lokal
  */
-
-// Fügt ein neues Todo hinzu
-const addTodo = () => {
-  if (newTodo.value.trim()) {
-    todos.value.push({
-      id: Date.now(), // Eindeutige ID basierend auf dem aktuellen Zeitstempel
-      text: newTodo.value.trim(),
-      completed: false,
-      editing: false
-    })
-    newTodo.value = '' // Eingabefeld leeren
+const fetchTodos = async () => {
+  try {
+    const response = await fetch('https://dein-backend.onrender.com/api/todos')
+    const data = await response.json()
+    todos.value = data.map((t: any) => ({
+      ...t,
+      completedAt: t.completed ? new Date() : undefined
+    }))
+  } catch (err) {
+    console.error('Fehler beim Laden der Todos:', err)
   }
 }
 
-// Wechselt den completed-Status eines Todos
-const toggleTodo = (id: number) => {
-  const todo = todos.value.find(t => t.id === id)
-  if (todo) {
-    todo.completed = !todo.completed
-    // Setzt/entfernt completedAt je nach Status
-    if (todo.completed) {
-      todo.completedAt = new Date()
-    } else {
-      delete todo.completedAt
+/**
+ * Erstellt ein neues Todo und speichert es im Backend
+ */
+const addTodo = async () => {
+  if (newTodo.value.trim()) {
+    const todoToSend = {
+      taskDescription: newTodo.value.trim(),
+      completed: false
+    }
+
+    try {
+      const response = await fetch('https://dein-backend.onrender.com/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(todoToSend)
+      })
+      const savedTodo = await response.json()
+      todos.value.push(savedTodo)
+      newTodo.value = ''
+    } catch (err) {
+      console.error('Fehler beim Speichern:', err)
     }
   }
 }
 
-// Entfernt ein Todo aus der Liste
-const removeTodo = (id: number) => {
-  todos.value = todos.value.filter(t => t.id !== id)
+/**
+ * Wechselt den Status eines Todos (offen ⇄ erledigt) und speichert ihn
+ * @param todo - Das Todo, das aktualisiert werden soll
+ */
+const toggleTodo = async (todo: Todo) => {
+  todo.completed = !todo.completed
+  todo.completedAt = todo.completed ? new Date() : undefined
+
+  if (todo.id) {
+    await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(todo)
+    })
+  }
 }
 
-// Startet den Bearbeitungsmodus für ein Todo
+/**
+ * Löscht ein Todo aus Backend und lokaler Liste
+ * @param todo - Das zu löschende Todo
+ */
+const removeTodo = async (todo: Todo) => {
+  if (!todo.id) return
+  try {
+    await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+      method: 'DELETE'
+    })
+    todos.value = todos.value.filter(t => t.id !== todo.id)
+  } catch (err) {
+    console.error('Fehler beim Löschen:', err)
+  }
+}
+
+/**
+ * Aktiviert den Bearbeitungsmodus für ein Todo
+ * @param todo - Das zu bearbeitende Todo
+ */
 const startEditing = (todo: Todo) => {
   todo.editing = true
-  editText.value = todo.text // Speichert den aktuellen Text für die Bearbeitung
+  editText.value = todo.taskDescription
 }
 
-// Speichert die Bearbeitung eines Todos
-const saveEdit = (todo: Todo) => {
+/**
+ * Speichert die geänderte Beschreibung eines Todos
+ * @param todo - Das zu aktualisierende Todo
+ */
+const saveEdit = async (todo: Todo) => {
   if (editText.value.trim()) {
-    todo.text = editText.value.trim()
+    todo.taskDescription = editText.value.trim()
+    todo.editing = false
+
+    if (todo.id) {
+      await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(todo)
+      })
+    }
   }
-  todo.editing = false
 }
 
-// Bricht die Bearbeitung ab
+/**
+ * Bricht die Bearbeitung ab
+ * @param todo - Das Todo, dessen Bearbeitung abgebrochen wird
+ */
 const cancelEdit = (todo: Todo) => {
   todo.editing = false
 }
 
-/*
- * Drag & Drop Funktionen
+/**
+ * Archiviert alle erledigten Todos und entfernt sie aus der Liste
  */
-
-// Wird beim Start des Ziehens aufgerufen
-const handleDragStart = (todo: Todo) => {
-  draggedTodo.value = todo
-}
-
-// Erlaubt das Ablegen von Elementen
-const handleDragOver = (e: DragEvent) => {
-  e.preventDefault()
-}
-
-// Wird beim Ablegen aufgerufen
-const handleDrop = (targetCompleted: boolean) => {
-  if (draggedTodo.value && draggedTodo.value.completed !== targetCompleted) {
-    const todo = todos.value.find(t => t.id === draggedTodo.value!.id)
-    if (todo) {
-      todo.completed = targetCompleted
-      if (targetCompleted) {
-        todo.completedAt = new Date()
-      } else {
-        delete todo.completedAt
-      }
-    }
-  }
-  draggedTodo.value = null
-}
-
-/*
- * Archivierungsfunktionen
- */
-
-// Archiviert alle erledigten Todos und löscht sie aus der aktuellen Liste
 const archiveAndClearCompleted = () => {
-  const completedTodos = todos.value.filter(t => t.completed)
-  if (completedTodos.length > 0) {
-    emit('archive-completed', completedTodos.map(todo => ({
-      text: todo.text,
-      completedAt: todo.completedAt!
-    })))
+  const completed = todos.value.filter(t => t.completed)
+  if (completed.length > 0) {
+    emit('archive-completed', completed.map(t => ({ text: t.taskDescription, completedAt: t.completedAt! })))
     todos.value = todos.value.filter(t => !t.completed)
   }
 }
 
-/*
- * Berechnete Eigenschaften
+/**
+ * Setzt das aktuell gezogene Todo für Drag & Drop
+ * @param todo - Das gezogene Todo
  */
+const handleDragStart = (todo: Todo) => {
+  draggedTodo.value = todo
+}
 
-// Filtert alle offenen Todos
-const openTodos = computed(() => todos.value.filter(t => !t.completed))
+/**
+ * Lässt ein Todo in einen Zielbereich fallen (offen oder erledigt)
+ * @param targetCompleted - Zielstatus des Todos
+ */
+const handleDrop = async (targetCompleted: boolean) => {
+  if (!draggedTodo.value || draggedTodo.value.completed === targetCompleted) return
+  draggedTodo.value.completed = targetCompleted
+  draggedTodo.value.completedAt = targetCompleted ? new Date() : undefined
+  await toggleTodo(draggedTodo.value)
+  draggedTodo.value = null
+}
 
-// Filtert alle erledigten Todos
-const completedTodos = computed(() => todos.value.filter(t => t.completed))
+/**
+ * Erlaubt das Drop-Verhalten im Zielbereich
+ * @param e - DragEvent
+ */
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault()
+}
 
-// Formatiert ein Datum für die Anzeige
+/**
+ * Formatiert ein Datum für die Anzeige
+ * @param date - Das zu formatierende Datum
+ * @returns Formatiertes Datum als String
+ */
 const formatDate = (date: Date) => {
   return new Intl.DateTimeFormat('default', {
     hour: '2-digit',
@@ -145,6 +187,12 @@ const formatDate = (date: Date) => {
     year: 'numeric'
   }).format(date)
 }
+
+const openTodos = computed(() => todos.value.filter(t => !t.completed))
+const completedTodos = computed(() => todos.value.filter(t => t.completed))
+
+onMounted(fetchTodos)
+
 </script>
 
 <template>
@@ -195,15 +243,16 @@ const formatDate = (date: Date) => {
             <input
               type="checkbox"
               :checked="todo.completed"
-              @change="toggleTodo(todo.id)"
+              @change="toggleTodo(todo)"
               class="mr-3 h-4 w-4"
-            >
-            <!-- Anzeige oder Bearbeitung des Todo-Textes -->
+            />
+
             <div v-if="!todo.editing"
                  @click="startEditing(todo)"
                  class="flex-1 cursor-pointer">
-              {{ todo.text }}
+              {{ todo.taskDescription }}
             </div>
+
             <div v-else class="flex-1 flex space-x-2">
               <input
                 v-model="editText"
@@ -221,7 +270,7 @@ const formatDate = (date: Date) => {
             </div>
           </div>
           <button
-            @click="removeTodo(todo.id)"
+            @click="removeTodo(todo)"
             class="ml-2 text-red-500 hover:text-red-700"
           >
             ×
@@ -266,14 +315,14 @@ const formatDate = (date: Date) => {
             <input
               type="checkbox"
               :checked="todo.completed"
-              @change="toggleTodo(todo.id)"
+              @change="toggleTodo(todo)"
               class="mr-3 h-4 w-4"
             >
             <!-- Anzeige oder Bearbeitung des Todo-Textes -->
             <div v-if="!todo.editing"
                  @click="startEditing(todo)"
                  class="flex-1 line-through text-gray-500 cursor-pointer">
-              {{ todo.text }}
+              {{ todo.taskDescription }}
             </div>
             <div v-else class="flex-1 flex space-x-2">
               <input
@@ -295,7 +344,7 @@ const formatDate = (date: Date) => {
             <!-- Anzeige des Fertigstellungsdatums -->
             <span class="text-sm text-gray-500">{{ formatDate(todo.completedAt!) }}</span>
             <button
-              @click="removeTodo(todo.id)"
+              @click="removeTodo(todo)"
               class="text-red-500 hover:text-red-700"
             >
               ×
