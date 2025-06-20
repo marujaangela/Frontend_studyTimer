@@ -155,15 +155,28 @@ const handleDragStart = (todo: Todo) => {
 
 /**
  * Lässt ein Todo in einen Zielbereich fallen (offen oder erledigt)
- * @param targetCompleted - Zielstatus des Todos
+ * @param targetCompleted - Der Zielstatus: true für „erledigt“ oder false für „offen“.
  */
 const handleDrop = async (targetCompleted: boolean) => {
   if (!draggedTodo.value || draggedTodo.value.completed === targetCompleted) return
   draggedTodo.value.completed = targetCompleted
   draggedTodo.value.completedAt = targetCompleted ? new Date() : undefined
-  await toggleTodo(draggedTodo.value)
+
+  if (draggedTodo.value.id) {
+    try {
+      await fetch(`https://backend-studytimer.onrender.com/api/todos/${draggedTodo.value.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draggedTodo.value)
+      })
+    } catch (err) {
+      console.error('Fehler beim Speichern nach Drag-and-Drop:', err)
+    }
+  }
+
   draggedTodo.value = null
 }
+
 
 /**
  * Erlaubt das Drop-Verhalten im Zielbereich
