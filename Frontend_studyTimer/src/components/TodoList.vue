@@ -29,7 +29,7 @@ const draggedTodo = ref<Todo | null>(null)
  */
 const fetchTodos = async () => {
   try {
-    const response = await fetch('https://dein-backend.onrender.com/api/todos')
+    const response = await fetch('https://backend-studytimer.onrender.com/api/todos')
     const data = await response.json()
     todos.value = data.map((t: any) => ({
       ...t,
@@ -51,7 +51,7 @@ const addTodo = async () => {
     }
 
     try {
-      const response = await fetch('https://dein-backend.onrender.com/api/todos', {
+      const response = await fetch('https://backend-studytimer.onrender.com/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(todoToSend)
@@ -74,7 +74,7 @@ const toggleTodo = async (todo: Todo) => {
   todo.completedAt = todo.completed ? new Date() : undefined
 
   if (todo.id) {
-    await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+    await fetch(`https://backend-studytimer.onrender.com/api/todos/${todo.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(todo)
@@ -89,7 +89,7 @@ const toggleTodo = async (todo: Todo) => {
 const removeTodo = async (todo: Todo) => {
   if (!todo.id) return
   try {
-    await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+    await fetch(`https://backend-studytimer.onrender.com/api/todos/${todo.id}`, {
       method: 'DELETE'
     })
     todos.value = todos.value.filter(t => t.id !== todo.id)
@@ -117,7 +117,7 @@ const saveEdit = async (todo: Todo) => {
     todo.editing = false
 
     if (todo.id) {
-      await fetch(`https://dein-backend.onrender.com/api/todos/${todo.id}`, {
+      await fetch(`https://backend-studytimer.onrender.com/api/todos/${todo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(todo)
