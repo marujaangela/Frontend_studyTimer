@@ -174,25 +174,32 @@ onUnmounted(() => {
 
     <!-- Timer-Steuerungsbuttons -->
     <div class="flex space-x-4">
-      <button @click="startTimer" :disabled="isRunning">
+      <button @click="startTimer" :disabled="isRunning"
+              class="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition disabled:opacity-50">
         Start
       </button>
-      <button @click="stopTimer" :disabled="!isRunning">
+      <button @click="stopTimer" :disabled="!isRunning"
+              class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
         Stop
       </button>
-      <button @click="resetTimer">
+      <button @click="resetTimer"
+              class="px-4 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 transition">
         Reset
       </button>
     </div>
 
     <!-- Benutzerdefinierte Zeiteinstellung -->
-    <div class="flex items-center space-x-4">
+    <div class="flex items-center space-x-3 bg-white bg-opacity-80 p-4 rounded-xl shadow-md backdrop-blur-md border border-gray-200">
       <input
         type="number"
         v-model="customTime"
         min="1"
+        @keyup.enter="setCustomTime"
+        class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+        placeholder="Min"
       >
-      <button @click="setCustomTime">
+      <button @click="setCustomTime"
+              class="px-5 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition">
         Set Time
       </button>
     </div>
@@ -203,10 +210,10 @@ onUnmounted(() => {
         <h2 class="text-2xl font-bold mb-4">Time's Up!</h2>
         <p class="mb-6">Would you like to take a {{ props.settings.breakDuration }} minute break?</p>
         <div class="flex justify-center space-x-4">
-          <button @click="startBreak">
+          <button @click="startBreak" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
             Yes, take a break
           </button>
-          <button @click="skipBreak">
+          <button @click="skipBreak" class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition">
             No, skip break
           </button>
         </div>
@@ -215,7 +222,7 @@ onUnmounted(() => {
 
     <!-- Übungs-Modal -->
     <div v-if="showExerciseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white p-8 rounded-lg max-w-md">
+      <div class="bg-neutral-100 p-8 rounded-2xl max-w-lg shadow-2xl border-4 border-green-500">
         <h2 class="text-2xl font-bold mb-4">Time for Exercise!</h2>
         <p class="mb-4">Let's do some quick exercises:</p>
         <ul class="list-disc list-inside mb-4">
@@ -224,9 +231,14 @@ onUnmounted(() => {
           <li>Do 10 desk push-ups</li>
           <li>Neck rotations</li>
         </ul>
-        <button @click="showExerciseModal = false">
-          Done
-        </button>
+        <div class="flex justify-center">
+          <button
+            @click="showExerciseModal = false"
+            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -240,7 +252,7 @@ onUnmounted(() => {
     <div class="text-6xl font-bold text-blue-600">
       {{ formattedBreakTime }}
     </div>
-    <button @click="endBreak">
+    <button @click="endBreak" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
       Skip Break
     </button>
   </div>
